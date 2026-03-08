@@ -87,8 +87,6 @@
   (cond
     (= (:type node) :integer)    (:value node)
     (= (:type node) :identifier) (let [val (get @env (:value node))]
-                                   (when (= (:value node) "exit")
-                                     (->result nil 1))
                                    (when (nil? val)
                                      (throw (Exception. (str "Oops! '" (:value node) "' doesn't exist!"))))
                                    val)
@@ -121,11 +119,13 @@
     value))
 
 (defn kout [expr]
-  (let [tokens (tokenst2 (tokenst1 expr))]
-    (when (= (:type (first tokens)) :cparen)
-      (throw (Exception. (:cparen errors))))
-    (let [[node _] (parse-expr tokens)]
-      (->result (keval node) 0))))
+  (if (= (str/trim expr) "exit")
+    (->result nil 1)
+    (let [tokens (tokenst2 (tokenst1 expr))]
+      (when (= (:type (first tokens)) :cparen)
+        (throw (Exception. (:cparen errors))))
+      (let [[node _] (parse-expr tokens)]
+        (->result (keval node) 0)))))
 
 (defn -main []
   (loop []
