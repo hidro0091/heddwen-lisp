@@ -11,6 +11,7 @@
   (def IDENT   :identifier  )
   (def UNKNOWN :unknown     )
   (def INT     :integer     )
+  (def STRING  :string      )
 
 (def errors
   {:cparen  "Found unexpected ')'. Maybe you forgot a '('?"
@@ -32,18 +33,15 @@
 (defrecord token [type value])
 
 (defn tokenst1 [s]
-  (remove #(= % "")
-    (-> s
-      (str/replace "(" " ( ") ; Open   paren
-      (str/replace ")" " ) ") ; Closed paren
-      (str/split   #"\s+")))) ; ... Split!!!!
+  (re-seq #"\"[^\"]*\"|\(|\)|[^\s\(\)\"]+" s))
 
 (defn tokenst2 [split]
   (for [tok split]
     (cond
       (= tok "(")                                                                  (->token OPAREN  nil)
       (= tok ")")                                                                  (->token CPAREN  nil)
-      (re-matches #"[a-zA-Z+\-=\!/\*^<>.,;\"?][a-zA-Z0-9+\-=\!/\*^<>.,;\"?]*" tok) (->token IDENT   tok)
+      (re-matches #"\".*?\"" tok)                                                  (->token STRING  (str/replace tok "\"" ""))
+      (re-matches #"[a-zA-Z+\-=\!/\*^<>.,;?][a-zA-Z0-9+\-=\!/\*^<>.,;?]*" tok)     (->token IDENT   tok)
       (re-matches #"[0-9]+\.?[0-9]*" tok)                                          (->token INT     (Double/parseDouble tok))
       :else                                                                        (->token UNKNOWN tok))))
 
@@ -55,6 +53,7 @@
     (cond
       (= (:type tok) :oparen)     (parse-list rest)
       (= (:type tok) :integer)    [tok rest]
+      (= (:type tok)  :string)    [tok rest]
       (= (:type tok) :identifier) [tok rest]
       (= (:type tok) :unknown)    (throw (Exception. (:unknown errors))))))
 
@@ -86,6 +85,7 @@
 (defn keval [node]
   (cond
     (= (:type node) :integer)    (:value node)
+    (= (:type node) :string)     (:value node)
     (= (:type node) :identifier) (let [val (get @env (:value node))]
                                    (when (nil? val)
                                      (throw (Exception. (str "Oops! '" (:value node) "' doesn't exist!"))))
