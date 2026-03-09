@@ -82,6 +82,7 @@
 (declare eval-def)
 (declare eval-if)
 (declare eval-fn)
+(declare eval-op-eq)
 (defn keval [node]
   (cond
     (= (:type node) :integer)    (:value node)
@@ -91,10 +92,21 @@
                                      (throw (Exception. (str "Oops! '" (:value node) "' doesn't exist!"))))
                                    val)
     (vector? node)               (cond
-                                   (= (:value (first node)) "=")  (eval-def (rest node))
-                                   (= (:value (first node)) "if") (eval-if (rest node))
-                                   (= (:value (first node)) "fn") (eval-fn (rest node))
+                                   (= (:value (first node)) "=")                     (eval-def (rest node))
+                                   (= (:value (first node)) "if")                    (eval-if (rest node))
+                                   (= (:value (first node)) "fn")                    (eval-fn (rest node))
+                                   (re-matches #"=[+\-/*^]" (:value (first node)))   (eval-op-eq node)
                                    :else (apply-fn node))))
+
+(def ops (into {} (take 5 default-env)))
+
+(defn eval-op-eq [args]
+  (let [op    (:value (first args))
+        name  (:value (second args))
+        value (keval (nth args 2))
+        f     (get ops (str/replace op "=" ""))]
+    (swap! env assoc name (f (@env name) value))
+    (@env name)))
 
 (defn eval-fn [args]
   (let [name      (:value (first args))
