@@ -4,3 +4,5 @@ A programming language...
 Guide starts here: https://www.notion.so/What-is-Heddwen-Lisp-31d35ce2f1468085a6e8f23a6f134e0f?source=copy_link
 
 Docs are in wiki (but read some of the guide first to learn how you use the language truly)
+
+If there's anything (`.repl` extension) in `resources/replsamples` those can be read for examples of cool things to do in Heddwen.
