@@ -19,19 +19,22 @@
    :eoi     "You ended input unexpectedly... Why'd you leave me? Come back papa please"})
 
 (def default-env
-  {"+"      +
-   "-"      -
-   "*"      *
-   "/"      /
-   "^"      math/pow
-   "vec"    vector
-   "=?"     =
-   "num?"   number?
-   "<?"     <
-   ">?"     >
-   "printn" println
-   "true"   true
-   "false"  false})
+  {"+"       +
+   "-"       -
+   "*"       *
+   "/"       /
+   "^"       math/pow
+   "vec"     vector
+   "hash"    hash-map
+   "hget"    get
+   "=?"      =
+   "num?"    number?
+   "<?"      <
+   ">?"      >
+   "printn"  println
+   "true"    true
+   "false"   false
+   "strjoin" str})
 
 (def env (atom default-env))
 
