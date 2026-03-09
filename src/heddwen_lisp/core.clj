@@ -29,7 +29,9 @@
    "num?"   number?
    "<?"     <
    ">?"     >
-   "printn" println})
+   "printn" println
+   "true"   true
+   "false"  false})
 
 (def env (atom default-env))
 
