@@ -19,14 +19,17 @@
    :eoi     "You ended input unexpectedly... Why'd you leave me? Come back papa please"})
 
 (def default-env
-  {"+"    +
-   "-"    -
-   "*"    *
-   "/"    /
-   "^"    math/pow
-   "vec"  vector
-   "=?"   =
-   "num?" number?})
+  {"+"      +
+   "-"      -
+   "*"      *
+   "/"      /
+   "^"      math/pow
+   "vec"    vector
+   "=?"     =
+   "num?"   number?
+   "<?"     <
+   ">?"     >
+   "printn" println})
 
 (def env (atom default-env))
 
@@ -79,10 +82,13 @@
       (fn? f)  (apply f vals)
       :else    (throw (Exception. (str "Hey... '" (:value head) "' isn't a function... If you were expecting some cool Lambda-calculus-style stuff, that's not here."))))))
 
+(def opregexp #"[+\-/*^]")
+
 (declare eval-def)
 (declare eval-if)
 (declare eval-fn)
 (declare eval-op-eq)
+(declare eval-loop)
 (defn keval [node]
   (cond
     (= (:type node) :integer)    (:value node)
@@ -95,10 +101,19 @@
                                    (= (:value (first node)) "=")                     (eval-def (rest node))
                                    (= (:value (first node)) "if")                    (eval-if (rest node))
                                    (= (:value (first node)) "fn")                    (eval-fn (rest node))
+                                   (= (:value (first node)) "loop")                  (eval-loop (rest node))
                                    (re-matches #"=[+\-/*^]" (:value (first node)))   (eval-op-eq node)
                                    :else (apply-fn node))))
 
-(def ops (into {} (take 5 default-env)))
+(def ops (into {} (filter #(re-matches opregexp (key %)) default-env)))
+
+(defn eval-loop [args]
+  (let [n    (keval (first args))
+        body (second args)]
+    (loop [i 0]
+      (when (< i n)
+        (keval body)
+        (recur (+ i 1))))))
 
 (defn eval-op-eq [args]
   (let [op    (:value (first args))
