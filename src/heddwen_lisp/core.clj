@@ -19,22 +19,23 @@
    :eoi     "You ended input unexpectedly... Why'd you leave me? Come back papa please"})
 
 (def default-env
-  {"+"       +
-   "-"       -
-   "*"       *
-   "/"       /
-   "^"       math/pow
-   "vec"     vector
-   "hash"    hash-map
-   "hget"    get
-   "=?"      =
-   "num?"    number?
-   "<?"      <
-   ">?"      >
-   "printn"  println
-   "true"    true
-   "false"   false
-   "strjoin" str})
+  {"+"      +
+   "-"      -
+   "*"      *
+   "/"      /
+   "^"      math/pow
+   "vec"    vector
+   "hash"   hash-map
+   "hget"   get
+   "=?"     =
+   "!=?"    not=
+   "num?"   number?
+   "<?"     <
+   ">?"     >
+   "printn" println
+   "true"   true
+   "false"  false
+   "do"     (fn [& args] (last args))})
 
 (def env (atom default-env))
 
@@ -81,9 +82,10 @@
         vals (map #(keval %) args)]
     (cond
       (map? f) (do
-                 (doseq [[k v] (map vector (map :value (rest (:params f))) vals)]
-                   (swap! env assoc k v))
-                 (keval (:body f)))
+                  (when (seq (rest (:params f)))
+                    (doseq [[k v] (map vector (map :value (rest (:params f))) vals)]
+                      (swap! env assoc k v)))
+                  (keval (:body f)))
       (fn? f)  (apply f vals)
       :else    (throw (Exception. (str "Hey... '" (:value head) "' isn't a function... If you were expecting some cool Lambda-calculus-style stuff, that's not here."))))))
 
@@ -94,6 +96,8 @@
 (declare eval-fn)
 (declare eval-op-eq)
 (declare eval-loop)
+(declare eval-join)
+(declare eval-while)
 (defn keval [node]
   (cond
     (= (:type node) :integer)    (:value node)
@@ -107,10 +111,28 @@
                                    (= (:value (first node)) "if")                    (eval-if (rest node))
                                    (= (:value (first node)) "fn")                    (eval-fn (rest node))
                                    (= (:value (first node)) "loop")                  (eval-loop (rest node))
+                                   (= (:value (first node)) "join")                  (eval-join (rest node))
+                                   (= (:value (first node)) "while")                 (eval-while (rest node))
                                    (re-matches #"=[+\-/*^]" (:value (first node)))   (eval-op-eq node)
                                    :else (apply-fn node))))
 
 (def ops (into {} (filter #(re-matches opregexp (key %)) default-env)))
+
+(defn eval-while [args]
+  (let [condition (first args)
+        body      (second args)]
+    (loop []
+      (when (keval condition)
+        (keval body)
+        (recur)))))
+
+(defn eval-join [args]
+  (let [spaces?     (keval (first args))
+        theRealArgs (map keval (rest args))
+        spaces      (interpose " " theRealArgs)]
+    (if (= spaces? true)
+      (apply str spaces)
+      (apply str theRealArgs))))
 
 (defn eval-loop [args]
   (let [n    (keval (first args))
@@ -153,11 +175,14 @@
 (defn kout [expr]
   (if (= (str/trim expr) "exit")
     (->result nil 1)
-    (let [tokens (tokenst2 (tokenst1 expr))]
-      (when (= (:type (first tokens)) :cparen)
-        (throw (Exception. (:cparen errors))))
-      (let [[node _] (parse-expr tokens)]
-        (->result (keval node) 0)))))
+    (if (= (str/trim expr) "clear")
+      (do (reset! env default-env)
+          (->result nil 0))
+      (let [tokens (tokenst2 (tokenst1 expr))]
+        (when (= (:type (first tokens)) :cparen)
+          (throw (Exception. (:cparen errors))))
+        (let [[node _] (parse-expr tokens)]
+          (->result (keval node) 0))))))
 
 (defn -main []
   (loop []
